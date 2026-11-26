@@ -123,8 +123,12 @@ class Qwen3VLMService:
         url = settings.vlm_remote_url.strip()
         if not url:
             raise ValueError("VLM_REMOTE_URL is empty in .env")
-        with httpx.Client(timeout=60.0) as client:
-            resp = client.post(url, files={"photo": ("meal.jpg", image_bytes, "image/jpeg")})
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(
+                url,
+                headers={"ngrok-skip-browser-warning": "true"},
+                files={"photo": ("meal.jpg", image_bytes, "image/jpeg")},
+            )
             resp.raise_for_status()
             return resp.json()
 

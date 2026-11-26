@@ -30,7 +30,8 @@ export const ReviewMealScreen: React.FC<{ route: any; navigation: any }> = ({ ro
     mealType: initMealType = 'Lunch',
     initialItems = [],
     editMealId,
-  }: { photoUri?: string; mealType: MealCategory; initialItems: MealFoodEntry[]; editMealId?: string } =
+    vlmStatusNote,
+  }: { photoUri?: string; mealType: MealCategory; initialItems: MealFoodEntry[]; editMealId?: string; vlmStatusNote?: string } =
     route.params || {};
 
   const [mealType, setMealType] = useState<MealCategory>(initMealType);
@@ -184,6 +185,11 @@ export const ReviewMealScreen: React.FC<{ route: any; navigation: any }> = ({ ro
   return (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.heading, { color: colors.text }]}>{t('reviewMeal')}</Text>
+      {vlmStatusNote ? (
+        <Text style={{ color: vlmStatusNote.includes('Live') ? colors.primary : colors.warning, fontWeight: '700', fontSize: 12, marginBottom: 8 }}>
+          Mode: {vlmStatusNote}
+        </Text>
+      ) : null}
 
       {photoUri ? (
         <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />

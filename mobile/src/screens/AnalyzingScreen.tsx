@@ -10,14 +10,14 @@ export const AnalyzingScreen: React.FC<{ route: any; navigation: any }> = ({ rou
   const colors = useTheme();
   const { t } = useTranslation();
   const { userAllergies } = useApp();
-  const { photoUri, mealType }: { photoUri?: string; mealType: MealCategory } = route.params || { mealType: 'Lunch' };
+  const { photoUri, photoBase64, mealType }: { photoUri?: string; photoBase64?: string; mealType: MealCategory } = route.params || { mealType: 'Lunch' };
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       const start = Date.now();
       // Step 1: Identify food items & visible toppings via Qwen3-VL (/api/identify-food)
-      const { detected, usedBackend } = await identifyFoodPhoto(photoUri || '', mealType);
+      const { detected, usedBackend, errorNote } = await identifyFoodPhoto(photoUri || '', mealType, photoBase64);
 
       // Step 2: Deterministic nutrition lookup from master_nutrition.csv (/api/calculate-nutrients)
       const calc = await calculateNutrientsFromBackend({
@@ -37,13 +37,14 @@ export const AnalyzingScreen: React.FC<{ route: any; navigation: any }> = ({ rou
           detectedOutput: detected,
           initialItems: calc.items,
           usedBackend: usedBackend && calc.usedBackend,
+          vlmStatusNote: errorNote || (usedBackend ? 'Live Qwen3-VL' : 'Offline Fallback'),
         });
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [photoUri, mealType, navigation, userAllergies]);
+  }, [photoUri, photoBase64, mealType, navigation, userAllergies]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

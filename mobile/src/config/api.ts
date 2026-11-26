@@ -5,7 +5,7 @@ import { OFFLINE_FOODS } from '../utils/nutritionDb';
  * Set this to your PC's local Wi-Fi IPv4 address (e.g., 'http://192.168.1.15:8000')
  * so Expo Go on your Android phone can reach FastAPI (/api/identify-food & /api/calculate-nutrients).
  */
-export const API_BASE_URL = 'http://10.85.97.153:8000';
+export const API_BASE_URL = 'http://10.85.97.33:8000';
 
 function confidenceLabelToNum(label?: string): number {
   const l = (label || 'high').toLowerCase();
@@ -20,33 +20,44 @@ function confidenceLabelToNum(label?: string): number {
  */
 export async function identifyFoodPhoto(
   photoUri: string,
-  mealType: MealCategory
-): Promise<{ detected: VlmIdentifyResponse; usedBackend: boolean }> {
+  mealType: MealCategory,
+  photoBase64?: string
+): Promise<{ detected: VlmIdentifyResponse; usedBackend: boolean; errorNote?: string }> {
+  let errorNote: string | undefined;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    const formData = new FormData();
-    formData.append('meal_type', mealType);
-    formData.append('photo', {
-      uri: photoUri,
-      name: 'meal.jpg',
-      type: 'image/jpeg',
-    } as any);
-
-    const res = await fetch(`${API_BASE_URL}/api/identify-food`, {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal,
-    });
+    let res: Response;
+    if (photoBase64) {
+      res = await fetch(`${API_BASE_URL}/api/identify-food-b64`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: photoBase64, meal_type: mealType }),
+      });
+    } else {
+      const formData = new FormData();
+      formData.append('meal_type', mealType);
+      formData.append('photo', {
+        uri: photoUri,
+        name: 'meal.jpg',
+        type: 'image/jpeg',
+      } as any);
+      res = await fetch(`${API_BASE_URL}/api/identify-food`, {
+        method: 'POST',
+        body: formData,
+      });
+    }
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
       return { detected: data, usedBackend: true };
     }
-  } catch {
-    // Offline / backend not reachable fallback
+    errorNote = `Backend HTTP ${res.status}`;
+  } catch (err: any) {
+    errorNote = err?.message || 'Network request failed';
+    console.warn('[identifyFoodPhoto] fallback:', errorNote);
   }
 
   // Offline fallback matching the exact Qwen3-VL JSON schema
@@ -87,6 +98,7 @@ export async function identifyFoodPhoto(
   return {
     detected: fallbackPresets[mealType] || fallbackPresets.Lunch,
     usedBackend: false,
+    errorNote,
   };
 }
 

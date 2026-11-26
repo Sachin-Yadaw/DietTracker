@@ -1,3 +1,4 @@
+import base64
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
@@ -7,6 +8,11 @@ from app.services.nutrition_engine import get_nutrition_engine
 from app.services.vlm_service import vlm_service
 
 router = APIRouter(prefix="/api", tags=["VLM & Deterministic Nutrition"])
+
+
+class IdentifyFoodBase64Request(BaseModel):
+    image_base64: str
+    meal_type: str = "Lunch"
 
 
 class CalculateNutrientsRequest(BaseModel):
@@ -24,12 +30,6 @@ async def identify_food(
     photo: UploadFile = File(...),
     meal_type: str = Form("Lunch"),
 ):
-    """
-    Step 1 of the two-step pipeline:
-    Accepts a meal photo, runs Qwen3-VL-8B-Instruct (or configured VLM_MODE),
-    and returns strict JSON listing detected items and visible_toppings.
-    Never asks the VLM to guess calories or nutrients.
-    """
     content = await photo.read()
     if len(content) > settings.max_upload_mb * 1024 * 1024:
         raise HTTPException(
@@ -45,13 +45,33 @@ async def identify_food(
     }
 
 
+@router.post("/identify-food-b64")
+def identify_food_base64(payload: IdentifyFoodBase64Request):
+    """Reliable JSON base64 endpoint for React Native / Expo Go on Android."""
+    try:
+        raw_b64 = payload.image_base64.split(",", 1)[-1]
+        content = base64.b64decode(raw_b64)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_IMAGE", "message": "Invalid base64 image payload."},
+        )
+    if len(content) > settings.max_upload_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail={"code": "FILE_TOO_LARGE", "message": f"Photo must be under {settings.max_upload_mb} MB."},
+        )
+    result = vlm_service.identify_food(content, meal_type=payload.meal_type)
+    return {
+        "image_scope": result.get("image_scope", "multi_item"),
+        "items": result.get("items", []),
+        "vlm_mode": settings.vlm_mode,
+        "model_name": settings.vlm_model_name,
+    }
+
+
 @router.post("/calculate-nutrients")
 def calculate_nutrients(payload: CalculateNutrientsRequest):
-    """
-    Step 2 of the two-step pipeline:
-    Applies user edits (delete, rename, add, grams or piece/default unit quantities)
-    and computes exact deterministic nutrients from data/master_nutrition.csv.
-    """
     engine = get_nutrition_engine(settings.master_nutrition_csv)
     result = engine.calculate_nutrients(
         detected_output=payload.detected_output,
@@ -62,7 +82,6 @@ def calculate_nutrients(payload: CalculateNutrientsRequest):
         fallback_grams=payload.fallback_grams,
     )
 
-    # Flag declared user allergies on matched items
     allergies = [a.strip().lower() for a in (payload.user_allergies or []) if a.strip()]
     if allergies:
         for item in result["items"]:
@@ -80,6 +99,5 @@ def search_master_foods(
     q: str = Query(default=""),
     limit: int = Query(default=20, ge=1, le=50),
 ):
-    """Search across all 1,224 rows of data/master_nutrition.csv."""
     engine = get_nutrition_engine(settings.master_nutrition_csv)
     return engine.search_foods(query=q, limit=limit)

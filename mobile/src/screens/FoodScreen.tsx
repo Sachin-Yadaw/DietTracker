@@ -22,9 +22,10 @@ export const FoodScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.85,
+      base64: true,
     });
     if (!res.canceled && res.assets[0]?.uri) {
-      navigation.navigate('Analyzing', { photoUri: res.assets[0].uri, mealType });
+      navigation.navigate('Analyzing', { photoUri: res.assets[0].uri, photoBase64: res.assets[0].base64, mealType });
     }
   };
 
@@ -73,7 +74,7 @@ export const FoodScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       >
         <Ionicons name="camera" size={44} color="#FFFFFF" />
         <Text style={styles.heroTitle}>{t('takePhoto')}</Text>
-        <Text style={styles.heroSub}>The Model detects Indian & global dishes in seconds</Text>
+        <Text style={styles.heroSub}>YOLO AI detects Indian & global dishes in seconds</Text>
       </TouchableOpacity>
 
       <View style={{ gap: 10, marginBottom: 16 }}>

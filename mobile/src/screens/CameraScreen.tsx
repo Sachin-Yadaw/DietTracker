@@ -19,9 +19,9 @@ export const CameraScreen: React.FC<{ route: any; navigation: any }> = ({ route,
   const camRef = useRef<any>(null);
 
   const pickGallery = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, base64: true });
     if (!res.canceled && res.assets[0]?.uri) {
-      navigation.replace('Analyzing', { photoUri: res.assets[0].uri, mealType });
+      navigation.replace('Analyzing', { photoUri: res.assets[0].uri, photoBase64: res.assets[0].base64, mealType });
     }
   };
 
@@ -32,10 +32,10 @@ export const CameraScreen: React.FC<{ route: any; navigation: any }> = ({ route,
       // Section 2: Compress photo to max 1280px on long side, JPEG quality ~85
       const compressed = await ImageManipulator.manipulateAsync(
         photo.uri,
-        [{ resize: { width: 1280 } }],
-        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+        [{ resize: { width: 768 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
-      navigation.replace('Analyzing', { photoUri: compressed.uri, mealType });
+      navigation.replace('Analyzing', { photoUri: compressed.uri, photoBase64: compressed.base64, mealType });
     } catch {
       navigation.replace('Analyzing', { photoUri: undefined, mealType });
     }
