@@ -5,7 +5,7 @@ import { OFFLINE_FOODS } from '../utils/nutritionDb';
  * Set this to your PC's local Wi-Fi IPv4 address (e.g., 'http://192.168.1.15:8000')
  * so Expo Go on your Android phone can reach FastAPI (/api/identify-food & /api/calculate-nutrients).
  */
-export const API_BASE_URL = 'http://10.85.97.33:8000';
+export const API_BASE_URL = 'http://10.145.191.53:8000';
 
 function confidenceLabelToNum(label?: string): number {
   const l = (label || 'high').toLowerCase();
